@@ -10,75 +10,8 @@ namespace Gladiator_fights
     {
         static void Main(string[] args)
         {
-            const string CommandChooseWarrior = "1";
-            const string CommandChooseMage = "2";
-            const string CommandChooseRogue = "3";
-            const string CommandChooseArcher = "4";
-            const string CommandChooseSummoner = "5";
-            const string CommandExit = "6";
-
-            bool isGame = true;
-            Console.WriteLine("Добро пожаловать в гладиаторские бои. Выбери двух бойцов и смотри кто победит!");
-            Fighter firstFighter = null;
-            Fighter secondFighter = null;
             Arena arena = new Arena();
-
-            while (isGame)
-            {
-                Fighter[] fighters = { new Warrior("Воин", 400, 50, 30), new Mage("Маг", 400, 100), new Rogue("Разбойник", 350, 70),
-                new Archer("Лучник", 350, 60, 2), new Summoner("Призыватель", 350, 60, new Fighter("Голем", 100, 0)) };
-                Console.WriteLine($"Введите - {CommandChooseWarrior}, чтобы выбрать война. Воин носит крепкую броню и получает меньше урона");
-                Console.WriteLine($"Введите - {CommandChooseMage}, чтобы выбрать мага. Маг может исцелить себя");
-                Console.WriteLine($"Введите - {CommandChooseRogue}, чтобы выбрать разбойника. Разбойник может нанести критический удар из укрытия");
-                Console.WriteLine($"Введите - {CommandChooseArcher}, чтобы выбрать лучника. Лучник быстро стреляет и наносит удвоенный урон");
-                Console.WriteLine($"Введите - {CommandChooseSummoner}, чтобы выбрать призывателя. Призыватель может призвать голема и защититься");
-                Console.WriteLine($"Введите - {CommandExit}, чтобы завершить бои.");
-                Console.WriteLine("\nВыберите первого бойца");
-                string chooseFirstFighter = Console.ReadLine();
-
-                if (chooseFirstFighter == CommandExit)
-                {
-                    Console.WriteLine("Завершение работы...");
-                    Console.ReadKey();
-                    break;
-                }
-
-                if (int.TryParse(chooseFirstFighter, out int firstFigterIndex))
-                {
-                    firstFighter = arena.ChooseFigher(fighters, firstFigterIndex);
-                }
-
-                Console.WriteLine("\nВыберите оппонента");
-                string chooseSecondFighter = Console.ReadLine();
-
-                if (int.TryParse(chooseSecondFighter, out int secondFighterIndex))
-                {
-                    if (secondFighterIndex != Convert.ToInt32(CommandExit))
-                    {
-                        secondFighter = arena.ChooseFigher(fighters, secondFighterIndex);
-
-                        if (secondFighter != firstFighter && secondFighter != null && firstFighter != null)
-                        {
-                            Console.WriteLine("Бойцы выбраны, начнём бой!");
-                            arena.Fight(firstFighter, secondFighter);
-                            Console.ReadKey();
-                            Console.Clear();
-                        }
-                        else
-                        {
-                            Console.WriteLine("Неккоректный ввод или боец не может воевать сам с собой");
-                            Console.ReadKey();
-                            Console.Clear();
-                        }
-                    }
-                    else
-                    {
-                        Console.WriteLine("Завершение работы...");
-                        Console.ReadKey();
-                        break;
-                    }
-                }
-            }
+            arena.OpenGames();
         }
     }
 
@@ -95,6 +28,11 @@ namespace Gladiator_fights
         public int Health { get; protected set; }
         public int Damage { get; protected set; }
 
+        public virtual void Attack(Fighter fighter)
+        {
+            fighter.TakeDamage(Damage);
+        }
+
         public virtual void TakeDamage(int damage)
         {
             Health -= damage;
@@ -102,7 +40,7 @@ namespace Gladiator_fights
 
         public void ShowStats()
         {
-            Console.WriteLine($"Я {Name}, у меня {Health} здоровья и сейчас я нанесу оппоненту {Damage} урона");
+            Console.WriteLine($"Я {Name}, у меня {Health} здоровья и {Damage} урона");
         }
     }
 
@@ -118,6 +56,13 @@ namespace Gladiator_fights
         public override void TakeDamage(int damage)
         {
             Health -= damage - _armor;
+        }
+
+        public override void Attack(Fighter fighter)
+        {
+            int rage = 10;
+            Damage += rage;
+            base.Attack(fighter);
         }
     }
 
@@ -163,10 +108,10 @@ namespace Gladiator_fights
             _stealth = 0;
         }
 
-        public override void TakeDamage(int damage)
+        public override void Attack(Fighter fighter)
         {
             ShadowStrike();
-            base.TakeDamage(damage);
+            base.Attack(fighter);
         }
 
         private void ShadowStrike()
@@ -189,12 +134,26 @@ namespace Gladiator_fights
 
     class Archer : Fighter
     {
-        public Archer(string name, int health, int damage, int attackSpeed) : base(name, health, damage * attackSpeed) { }
+        public Archer(string name, int health, int damage) : base(name, health, damage) { }
 
-        public override void TakeDamage(int damage)
+        public override void Attack(Fighter fighter)
         {
-            base.TakeDamage(damage);
+            CriticalHit(fighter);
+            base.Attack(fighter);
         }
+
+        private void CriticalHit(Fighter fighter)
+        {
+            int criticalDamageModificator = 3;
+            int opponentLowHealth = 200;
+
+            if(fighter.Health <= opponentLowHealth)
+            {
+                Console.WriteLine($"Я {Name} и я нашёл уязвимые места моего соперника");
+                Damage = Damage * criticalDamageModificator;
+            }
+        }
+
     }
 
     class Summoner : Fighter
@@ -235,40 +194,141 @@ namespace Gladiator_fights
 
     class Arena
     {
-        public Fighter ChooseFigher(Fighter[] fighters, int userInput)
+        public void OpenGames()
         {
-            Fighter fighter;
+            const string CommandChooseFirstFigter = "1";
+            const string CommandChooseSecondFigter = "2";
+            const string CommandStartFight = "3";
+            const string CommandExit = "4";
 
-            if (userInput > fighters.Length)
+            bool isGame = true;
+            Console.WriteLine("Добро пожаловать в гладиаторские бои. Выбери двух бойцов и смотри кто победит!");
+            Fighter firstFighter = null;
+            Fighter secondFighter = null;
+            Arena arena = new Arena();
+
+            while (isGame)
             {
-                Console.WriteLine("Бойца с таким номером нет");
-                return null;
-            }
-            else
-            {
-                fighter = fighters[userInput - 1];
-                return fighter;
+                Fighter[] fighters = { new Warrior("Воин", 400, 50, 30), new Mage("Маг", 400, 100), new Rogue("Разбойник", 350, 70),
+                new Archer("Лучник", 350, 100), new Summoner("Призыватель", 350, 70, new Fighter("Голем", 150, 0)) };
+                Console.WriteLine($"Введите - {CommandChooseFirstFigter}, чтобы выбрать первого бойца");
+                Console.WriteLine($"Введите - {CommandChooseSecondFigter}, чтобы выбрать оппонента");
+                Console.WriteLine($"Введите - {CommandStartFight}, чтобы начать бой");
+                Console.WriteLine($"Введите - {CommandExit}, чтобы завершить бои.");
+                string userInput = Console.ReadLine();
+
+                switch (userInput)
+                {
+                    case CommandChooseFirstFigter:
+                        firstFighter = arena.ChooseFigher(fighters);
+                        break;
+                    case CommandChooseSecondFigter:
+                        secondFighter = arena.ChooseFigher(fighters);
+                        break;
+                    case CommandStartFight:
+                        Fight(firstFighter, secondFighter);
+                        break;
+                    case CommandExit:
+                        Console.WriteLine("Арена закрывается..");
+                        isGame = false;
+                        break;
+                    default:
+                        Console.WriteLine("Такой команды нет");
+                        break;
+                }
+
+                Console.ReadKey();
+                Console.Clear();
             }
         }
 
-        public void Fight(Fighter firstFighter, Fighter secondFighter)
+        private void ShowFighers(Fighter[] fighters)
         {
-            while (firstFighter.Health > 0 && secondFighter.Health > 0)
-            {
-                firstFighter.ShowStats();
-                secondFighter.ShowStats();
-                firstFighter.TakeDamage(secondFighter.Damage);
-                secondFighter.TakeDamage(firstFighter.Damage);
-                Console.WriteLine("------------------------");
-            }
+            int fighterIndex = 1;
 
-            if (firstFighter.Health <= 0)
+            foreach (var figher in fighters)
             {
-                Console.WriteLine($"В битве побеждает {secondFighter.Name} !");
+                Console.Write($"{fighterIndex} - ");
+                figher.ShowStats();
+                fighterIndex++;
             }
-            else if (secondFighter.Health <= 0)
+        }
+
+        private Fighter ChooseFigher(Fighter[] fighters)
+        {
+            Fighter fighter;
+            ShowFighers(fighters);
+            Console.WriteLine("Выберите первого бойца: ");
+            string userInput = Console.ReadLine();
+
+            if (int.TryParse(userInput, out int figherIndex))
             {
-                Console.WriteLine($"В битве побеждает {firstFighter.Name} !");
+                if (figherIndex <= fighters.Length)
+                {
+                    fighter = fighters[figherIndex - 1];
+                    return fighter;
+                }
+                else
+                {
+                    Console.WriteLine("Бойца с таким номером нет.");
+                    return null;
+                }
+            }
+            else
+            {
+                Console.WriteLine("Неккоректный ввод.");
+                return null;
+            }
+        }
+
+        private void Fight(Fighter firstFighter, Fighter secondFighter)
+        {
+            if (isFighterChosen(firstFighter,secondFighter))
+            {
+                while (firstFighter.Health > 0 && secondFighter.Health > 0)
+                {
+                    firstFighter.ShowStats();
+                    secondFighter.ShowStats();
+                    firstFighter.Attack(secondFighter);
+                    secondFighter.Attack(firstFighter);
+                    Console.WriteLine("------------------------");
+                }
+
+                if(firstFighter.Health <=0 && secondFighter.Health <= 0)
+                {
+                    Console.WriteLine("Ничья!");
+                }
+                else if (firstFighter.Health <= 0)
+                {
+                    Console.WriteLine($"В битве побеждает {secondFighter.Name} !");
+                }
+                else 
+                {
+                    Console.WriteLine($"В битве побеждает {firstFighter.Name} !");
+                }
+            }
+            else
+            {
+                Console.WriteLine("Бойцы не выбраны !");
+            }
+        }
+
+        private bool isFighterChosen(Fighter firstFighter, Fighter secondFighter)
+        {
+            if(firstFighter == null || secondFighter == null)
+            {
+                return false;
+            }
+            else
+            {
+                if (firstFighter == secondFighter)
+                {
+                    return false;
+                }
+                else
+                {
+                    return true;
+                }
             }
         }
     }
