@@ -11,7 +11,7 @@ namespace Gladiator_fights
         static void Main(string[] args)
         {
             Arena arena = new Arena();
-            arena.OpenGames();
+            arena.Work();
         }
     }
 
@@ -118,11 +118,12 @@ namespace Gladiator_fights
         {
             int stealthRegeneration = 50;
             int maxStealth = 100;
+            int criticalDamageModificator = 3;
 
             if (_stealth == maxStealth)
             {
                 Console.WriteLine($"Я {Name}, я ушёл в тень и нанесу критический урон.");
-                Damage = Damage * 3;
+                Damage *= criticalDamageModificator;
                 _stealth = 0;
             }
             else
@@ -147,10 +148,10 @@ namespace Gladiator_fights
             int criticalDamageModificator = 3;
             int opponentLowHealth = 200;
 
-            if(fighter.Health <= opponentLowHealth)
+            if (fighter.Health <= opponentLowHealth)
             {
                 Console.WriteLine($"Я {Name} и я нашёл уязвимые места моего соперника");
-                Damage = Damage * criticalDamageModificator;
+                Damage *= criticalDamageModificator;
             }
         }
 
@@ -160,6 +161,16 @@ namespace Gladiator_fights
     {
         private Fighter _minion;
 
+        public bool NeedProtection
+        {
+            get
+            {
+                int lowHealth = 200;
+                return Health <= lowHealth;
+            }
+            private set { }
+        }
+
         public Summoner(string name, int health, int damage, Fighter minion) : base(name, health, damage)
         {
             _minion = minion;
@@ -167,7 +178,7 @@ namespace Gladiator_fights
 
         public override void TakeDamage(int damage)
         {
-            if (ifMasterNeedProtect() == true)
+            if (NeedProtection == true)
             {
                 if (_minion.Health > 0)
                 {
@@ -184,33 +195,31 @@ namespace Gladiator_fights
                 base.TakeDamage(damage);
             }
         }
-
-        private bool ifMasterNeedProtect()
-        {
-            int lowHealth = 200;
-            return Health <= lowHealth;
-        }
     }
 
     class Arena
     {
-        public void OpenGames()
+        public void Work()
         {
             const string CommandChooseFirstFigter = "1";
             const string CommandChooseSecondFigter = "2";
             const string CommandStartFight = "3";
             const string CommandExit = "4";
 
-            bool isGame = true;
+            bool isPlaying = true;
             Console.WriteLine("Добро пожаловать в гладиаторские бои. Выбери двух бойцов и смотри кто победит!");
             Fighter firstFighter = null;
             Fighter secondFighter = null;
             Arena arena = new Arena();
 
-            while (isGame)
+            while (isPlaying)
             {
-                Fighter[] fighters = { new Warrior("Воин", 400, 50, 30), new Mage("Маг", 400, 100), new Rogue("Разбойник", 350, 70),
-                new Archer("Лучник", 350, 100), new Summoner("Призыватель", 350, 70, new Fighter("Голем", 150, 0)) };
+                Fighter[] fighters = { 
+                    new Warrior("Воин", 400, 50, 30),
+                    new Mage("Маг", 400, 100),
+                    new Rogue("Разбойник", 350, 70),
+                    new Archer("Лучник", 350, 100),
+                    new Summoner("Призыватель", 350, 70, new Fighter("Голем", 150, 0)) };
                 Console.WriteLine($"Введите - {CommandChooseFirstFigter}, чтобы выбрать первого бойца");
                 Console.WriteLine($"Введите - {CommandChooseSecondFigter}, чтобы выбрать оппонента");
                 Console.WriteLine($"Введите - {CommandStartFight}, чтобы начать бой");
@@ -222,16 +231,20 @@ namespace Gladiator_fights
                     case CommandChooseFirstFigter:
                         firstFighter = arena.ChooseFigher(fighters);
                         break;
+
                     case CommandChooseSecondFigter:
                         secondFighter = arena.ChooseFigher(fighters);
                         break;
+
                     case CommandStartFight:
                         Fight(firstFighter, secondFighter);
                         break;
+
                     case CommandExit:
                         Console.WriteLine("Арена закрывается..");
-                        isGame = false;
+                        isPlaying = false;
                         break;
+
                     default:
                         Console.WriteLine("Такой команды нет");
                         break;
@@ -244,13 +257,10 @@ namespace Gladiator_fights
 
         private void ShowFighers(Fighter[] fighters)
         {
-            int fighterIndex = 1;
-
-            foreach (var figher in fighters)
+            for (int i = 0; i < fighters.Length; i++)
             {
-                Console.Write($"{fighterIndex} - ");
-                figher.ShowStats();
-                fighterIndex++;
+                Console.Write($"{i + 1} - ");
+                fighters[i].ShowStats();
             }
         }
 
@@ -283,7 +293,7 @@ namespace Gladiator_fights
 
         private void Fight(Fighter firstFighter, Fighter secondFighter)
         {
-            if (isFighterChosen(firstFighter,secondFighter))
+            if (isFighterChosen(firstFighter, secondFighter))
             {
                 while (firstFighter.Health > 0 && secondFighter.Health > 0)
                 {
@@ -294,7 +304,7 @@ namespace Gladiator_fights
                     Console.WriteLine("------------------------");
                 }
 
-                if(firstFighter.Health <=0 && secondFighter.Health <= 0)
+                if (firstFighter.Health <= 0 && secondFighter.Health <= 0)
                 {
                     Console.WriteLine("Ничья!");
                 }
@@ -302,7 +312,7 @@ namespace Gladiator_fights
                 {
                     Console.WriteLine($"В битве побеждает {secondFighter.Name} !");
                 }
-                else 
+                else
                 {
                     Console.WriteLine($"В битве побеждает {firstFighter.Name} !");
                 }
@@ -315,7 +325,7 @@ namespace Gladiator_fights
 
         private bool isFighterChosen(Fighter firstFighter, Fighter secondFighter)
         {
-            if(firstFighter == null || secondFighter == null)
+            if (firstFighter == null || secondFighter == null)
             {
                 return false;
             }
